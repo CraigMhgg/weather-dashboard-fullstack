@@ -13,7 +13,9 @@ Our project uses a multi-branch workflow to separate frontend and backend develo
 ## Current Branch Organization
 
 ### Backend Branch (`backend-setup`)
+
 Contains all Laravel backend code:
+
 - Laravel framework installation
 - API controllers and routes
 - Database migrations
@@ -21,13 +23,16 @@ Contains all Laravel backend code:
 - Backend documentation
 
 **When to use:**
+
 - Adding new API endpoints
 - Updating Laravel dependencies
 - Modifying backend configuration
 - Backend bug fixes
 
 ### Frontend Branch (Future: `frontend-dev`)
+
 Will contain Vue.js frontend code:
+
 - Vue components
 - Frontend routing
 - State management
@@ -103,6 +108,7 @@ Follow conventional commits format:
 - `chore:` - Maintenance tasks
 
 **Examples:**
+
 ```bash
 git commit -m "feat: Add user authentication API"
 git commit -m "fix: Resolve CORS issue in weather endpoint"
@@ -135,6 +141,7 @@ git push origin main
 - Experiments: `experiment/description`
 
 **Examples:**
+
 - `feature/user-authentication`
 - `fix/cors-configuration`
 - `hotfix/critical-api-bug`
