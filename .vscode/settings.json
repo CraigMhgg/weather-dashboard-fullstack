@@ -1,0 +1,19 @@
+{
+  "php.validate.executablePath": "C:\\php-8.5.1\\php.exe",
+  "php.debug.executablePath": "C:\\php-8.5.1\\php.exe",
+  "[php]": {
+    "editor.defaultFormatter": "bmewburn.vscode-intelephense-client",
+    "editor.formatOnSave": true
+  },
+  "php.suggest.basic": false,
+  "intelephense.files.exclude": [
+    "**/.git/**",
+    "**/.svn/**",
+    "**/.hg/**",
+    "**/CVS/**",
+    "**/.DS_Store/**",
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**/{Tests,tests}/**"
+  ]
+}
