@@ -1,0 +1,60 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Listen for Xdebug (Laravel)",
+      "type": "php",
+      "request": "launch",
+      "port": 9003,
+      "pathMappings": {
+        "/var/www/html": "${workspaceFolder}/backend"
+      },
+      "ignore": ["**/vendor/**/*.php"]
+    },
+    {
+      "name": "Launch Laravel Artisan",
+      "type": "php",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/artisan",
+      "cwd": "${workspaceFolder}/backend",
+      "port": 9003,
+      "runtimeArgs": ["-dxdebug.mode=debug", "-dxdebug.start_with_request=yes"],
+      "env": {
+        "XDEBUG_MODE": "debug,develop"
+      }
+    },
+    {
+      "name": "Launch Laravel Server",
+      "type": "php",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/artisan",
+      "args": ["serve"],
+      "cwd": "${workspaceFolder}/backend",
+      "port": 9003,
+      "runtimeArgs": ["-dxdebug.mode=debug", "-dxdebug.start_with_request=yes"],
+      "env": {
+        "XDEBUG_MODE": "debug,develop"
+      },
+      "serverReadyAction": {
+        "pattern": "started on (http://[^\\s]+)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      }
+    },
+    {
+      "name": "Debug Current PHP Script",
+      "type": "php",
+      "request": "launch",
+      "program": "${file}",
+      "cwd": "${fileDirname}",
+      "port": 9003,
+      "runtimeArgs": ["-dxdebug.mode=debug", "-dxdebug.start_with_request=yes"],
+      "env": {
+        "XDEBUG_MODE": "debug,develop"
+      }
+    }
+  ]
+}
