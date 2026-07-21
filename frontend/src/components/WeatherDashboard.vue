@@ -9,12 +9,15 @@ interface WeatherData {
   windSpeed: number
   feelsLike: number
   icon: string
+  isDay: boolean
+  localTime?: string
 }
 
 const searchQuery = ref('')
 const isLoading = ref(false)
 const weatherData = ref<WeatherData | null>(null)
 const error = ref('')
+const isGettingLocation = ref(false)
 
 // Sample data for demonstration
 const sampleWeatherData: Record<string, WeatherData> = {
@@ -64,49 +67,182 @@ const searchWeather = async () => {
 
   isLoading.value = true
   error.value = ''
+  weatherData.value = null
 
-  // Simulate API call
-  setTimeout(() => {
-    const cityKey = searchQuery.value.toLowerCase().replace(/\s+/g, '')
-    const data = sampleWeatherData[cityKey]
+  try {
+    const response = await fetch(
+      `http://localhost:8000/weather.php?city=${encodeURIComponent(searchQuery.value)}`,
+    )
+    const data = await response.json()
 
-    if (data) {
+    if (!response.ok) {
+      error.value = data.error || 'City not found'
+      weatherData.value = null
+    } else {
       weatherData.value = data
       error.value = ''
-    } else {
-      error.value = 'City not found. Try: London, Paris, Tokyo, or New York'
-      weatherData.value = null
     }
+  } catch (err) {
+    error.value = 'Failed to fetch weather data. Make sure the backend server is running.'
+    weatherData.value = null
+  } finally {
     isLoading.value = false
-  }, 500)
+  }
+}
+
+const getCurrentLocation = async () => {
+  if (!navigator.geolocation) {
+    error.value = 'Geolocation is not supported by your browser'
+    return
+  }
+
+  isGettingLocation.value = true
+  error.value = ''
+  weatherData.value = null
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      try {
+        const { latitude, longitude } = position.coords
+        const response = await fetch(
+          `http://localhost:8000/weather.php?lat=${latitude}&lon=${longitude}`,
+        )
+        const data = await response.json()
+
+        if (!response.ok) {
+          error.value = data.error || 'Failed to get weather for your location'
+          weatherData.value = null
+        } else {
+          weatherData.value = data
+          searchQuery.value = data.city
+          error.value = ''
+        }
+      } catch (err) {
+        error.value = 'Failed to fetch weather data'
+        weatherData.value = null
+      } finally {
+        isGettingLocation.value = false
+      }
+    },
+    (err) => {
+      error.value = 'Unable to retrieve your location. Please allow location access.'
+      isGettingLocation.value = false
+    },
+  )
 }
 
 const backgroundColor = computed(() => {
   if (!weatherData.value) return '#4a90e2'
 
   const temp = weatherData.value.temperature
+  const isDay = weatherData.value.isDay
+
+  // Cooler colors for night
+  if (!isDay) {
+    if (temp < 5) return '#2d3561'
+    if (temp < 15) return '#1e3a5f'
+    if (temp < 25) return '#2c4875'
+    return '#3d5a80'
+  }
+
+  // Warmer colors for day
   if (temp < 5) return '#5c7cfa'
   if (temp < 15) return '#4a90e2'
   if (temp < 25) return '#ffa94d'
   return '#ff6b6b'
 })
+
+const headerGradient = computed(() => {
+  if (!weatherData.value) return 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+
+  return weatherData.value.isDay
+    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+    : 'linear-gradient(135deg, #4a5568 0%, #2d3748 100%)'
+})
+
+const welcomeGradient = computed(() => {
+  if (!weatherData.value) return 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+
+  return weatherData.value.isDay
+    ? 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+    : 'linear-gradient(135deg, #2d3748 0%, #1a202c 100%)'
+})
+
+const welcomeTextColor = computed(() => {
+  if (!weatherData.value) return '#333'
+  return weatherData.value.isDay ? '#333' : '#e2e8f0'
+})
+
+const welcomeSubtextColor = computed(() => {
+  if (!weatherData.value) return '#666'
+  return weatherData.value.isDay ? '#666' : '#a0aec0'
+})
+
+const formatLocalTime = (timeString: string) => {
+  if (!timeString) return ''
+  try {
+    const [date, time] = timeString.split(' ')
+    const [year, month, day] = date.split('-')
+    const [hour, minute] = time.split(':')
+
+    const dateObj = new Date(
+      parseInt(year),
+      parseInt(month) - 1,
+      parseInt(day),
+      parseInt(hour),
+      parseInt(minute),
+    )
+
+    return dateObj.toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
+  } catch (e) {
+    return timeString
+  }
+}
 </script>
 
 <template>
   <div class="weather-dashboard">
     <div class="header">
-      <h1>🌤️ Weather Dashboard</h1>
+      <h1>
+        {{ weatherData?.isDay === false ? '🌙' : '🌤️' }}
+        <span
+          class="gradient-text"
+          :style="{
+            background: headerGradient,
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+          }"
+          >Weather Dashboard</span
+        >
+      </h1>
       <p class="subtitle">Get real-time weather information for any city</p>
     </div>
 
     <div class="search-container">
-      <input
-        v-model="searchQuery"
-        type="text"
-        placeholder="Enter city name..."
-        class="search-input"
-        @keyup.enter="searchWeather"
-      />
+      <div class="input-wrapper">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Enter city name..."
+          class="search-input"
+          @keyup.enter="searchWeather"
+        />
+        <button
+          @click="getCurrentLocation"
+          class="location-button"
+          :disabled="isGettingLocation"
+          title="Use current location"
+        >
+          {{ isGettingLocation ? '📍' : '📍' }}
+        </button>
+      </div>
       <button @click="searchWeather" class="search-button" :disabled="isLoading">
         {{ isLoading ? 'Searching...' : 'Search' }}
       </button>
@@ -119,6 +255,9 @@ const backgroundColor = computed(() => {
         <div class="city-info">
           <h2>{{ weatherData.city }}</h2>
           <p class="condition">{{ weatherData.condition }}</p>
+          <p v-if="weatherData.localTime" class="local-time-header">
+            {{ weatherData.isDay ? '☀️' : '🌙' }} {{ formatLocalTime(weatherData.localTime) }}
+          </p>
         </div>
         <div class="weather-icon">{{ weatherData.icon }}</div>
       </div>
@@ -146,11 +285,19 @@ const backgroundColor = computed(() => {
       </div>
     </div>
 
-    <div v-else-if="!error && !isLoading" class="welcome-message">
+    <div
+      v-else-if="!error && !isLoading"
+      class="welcome-message"
+      :style="{ background: welcomeGradient }"
+    >
       <div class="welcome-icon">🌍</div>
-      <h3>Welcome to Weather Dashboard</h3>
-      <p>Search for a city to see current weather conditions</p>
-      <p class="hint">Try: London, Paris, Tokyo, or New York</p>
+      <h3 :style="{ color: welcomeTextColor }">Welcome to Weather Dashboard</h3>
+      <p :style="{ color: welcomeSubtextColor }">
+        Search for a city to see current weather conditions
+      </p>
+      <p class="hint" :style="{ color: welcomeSubtextColor }">
+        Try: London, Paris, Tokyo, or New York
+      </p>
     </div>
   </div>
 </template>
@@ -173,11 +320,14 @@ const backgroundColor = computed(() => {
 .header h1 {
   font-size: 1.75rem;
   margin-bottom: 0.5rem;
+  line-height: 1.2;
+}
+
+.gradient-text {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  line-height: 1.2;
 }
 
 .subtitle {
@@ -194,9 +344,14 @@ const backgroundColor = computed(() => {
   margin-bottom: 1.5rem;
 }
 
+.input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
 .search-input {
   width: 100%;
-  padding: 0.875rem 1rem;
+  padding: 0.875rem 3.5rem 0.875rem 1rem;
   font-size: 1rem;
   border: 2px solid #e0e0e0;
   border-radius: 12px;
@@ -210,6 +365,37 @@ const backgroundColor = computed(() => {
 
 .search-input:focus {
   border-color: #667eea;
+}
+
+.location-button {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  width: 40px;
+  height: 36px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 0.2s,
+    opacity 0.3s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.location-button:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.location-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .search-button {
@@ -304,6 +490,14 @@ const backgroundColor = computed(() => {
   font-size: 1rem;
 }
 
+.local-time {
+  display: block;
+  opacity: 0.85;
+  font-size: 0.9rem;
+  margin-top: 0.75rem;
+  font-style: italic;
+}
+
 .weather-details {
   display: grid;
   grid-template-columns: 1fr;
@@ -393,9 +587,18 @@ const backgroundColor = computed(() => {
     gap: 1rem;
   }
 
-  .search-input {
+  .input-wrapper {
     flex: 1;
-    padding: 1rem 1.5rem;
+  }
+
+  .search-input {
+    padding: 1rem 3.5rem 1rem 1.5rem;
+  }
+
+  .location-button {
+    right: 8px;
+    width: 44px;
+    height: 40px;
   }
 
   .search-button {
@@ -507,6 +710,10 @@ const backgroundColor = computed(() => {
 
   .detail-value {
     font-size: 1.3rem;
+  }
+
+  .location-button:hover:not(:disabled) {
+    transform: translateY(-50%) scale(1.05);
   }
 
   .welcome-message {
